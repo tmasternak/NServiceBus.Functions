@@ -1,0 +1,56 @@
+﻿<Project Sdk="Microsoft.NET.Sdk">
+  <PropertyGroup>
+    <TargetFramework>net461</TargetFramework>
+  </PropertyGroup>
+  <ItemGroup>    
+    <PackageReference Include="Microsoft.NET.Sdk.Functions" Version="1.0.13" />
+  </ItemGroup>
+  <ItemGroup>
+    <ProjectReference Include="..\NServiceBus.AzureFunctions\NServiceBus.AzureFunctions.csproj" />
+    <ProjectReference Include="..\NServiceBus.Contracts\NServiceBus.Contracts.csproj" />
+  </ItemGroup>
+  <ItemGroup>
+    <Reference Include="Microsoft.CSharp" />
+  </ItemGroup>
+  <ItemGroup>
+    <None Update="host.json">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    </None>
+    <None Update="local.settings.json">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    </None>
+  </ItemGroup>
+
+  <!-- This is a custom task for rewriting the input trigger name in function.json files.-->
+  <UsingTask TaskName="BindingRewriterTask" TaskFactory="CodeTaskFactory" AssemblyFile="$(MSBuildToolsPath)\Microsoft.Build.Tasks.v4.0.dll">
+    <ParameterGroup>
+      <RootDirectory ParameterType="System.String" Required="true" />
+    </ParameterGroup>
+    <Task>
+      <Reference Include="System" />
+      <Code Type="Fragment" Language="cs">
+        <![CDATA[  
+          Log.LogMessage(MessageImportance.High, "Searching for function.json files in + " +RootDirectory + ".");
+
+          var functionFiles = new DirectoryInfo(RootDirectory).EnumerateFiles("function.json", SearchOption.AllDirectories);
+
+          foreach (var functionFile in functionFiles)
+          {
+              Log.LogMessage(MessageImportance.High, "File found: " + functionFile.FullName + ".");
+
+              var content = File.ReadAllText(functionFile.FullName);
+
+              content = content.Replace("nServiceBusTrigger", "queueTrigger");
+
+              File.WriteAllText(functionFile.FullName, content);
+
+              Log.LogMessage(MessageImportance.High, "Input bindings updated for " + functionFile.FullName + ".");
+          }
+        ]]>
+      </Code>
+    </Task>
+  </UsingTask>
+  <Target Name="RewriteBindings" AfterTargets="_GenerateFunctionsPostBuild">
+    <BindingRewriterTask RootDirectory="$(TargetDir)" />
+  </Target>
+</Project>

@@ -1,0 +1,7 @@
+{
+  "profiles": {
+    "NServiceBus.Function": {
+      "commandName": "Project"
+    }
+  }
+}
